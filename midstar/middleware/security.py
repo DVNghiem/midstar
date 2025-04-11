@@ -44,16 +44,16 @@ class SecurityConfig:
 
 
 class SecurityMiddleware(BaseHTTPMiddleware):
-    def __init__(self, secur_config: SecurityConfig, *args, **kwargs):
+    def __init__(self, secure_config: SecurityConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.secur_config = secur_config
+        self.secure_config = secure_config
         self._secret_key = secrets.token_bytes(32)
         self._token_lifetime = 3600
         self._rate_limit_storage = {}
 
     def _rate_limit_check(self, request: Request) -> Optional[Response]:
         """Check if the request exceeds rate limits"""
-        if not self.secur_config.rate_limiting:
+        if not self.secure_config.rate_limiting:
             return None
 
         client_ip = request.client.host
@@ -85,19 +85,19 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     def _generate_jwt_token(self, user_data: Dict[str, Any]) -> str:
         """Generate a JWT token"""
-        if not self.secur_config.jwt_secret:
+        if not self.secure_config.jwt_secret:
             raise ValueError("JWT secret key is not configured")
 
         payload = {
             "user": user_data,
             "exp": datetime.now(tz=timezone.utc)
-            + timedelta(seconds=self.secur_config.jwt_expires_in),
+            + timedelta(seconds=self.secure_config.jwt_expires_in),
             "iat": datetime.now(tz=timezone.utc),
         }
         return jwt.encode(
             payload,
-            self.secur_config.jwt_secret,
-            algorithm=self.secur_config.jwt_algorithm,
+            self.secure_config.jwt_secret,
+            algorithm=self.secure_config.jwt_algorithm,
         )
 
     def _verify_jwt_token(self, token: str) -> Dict[str, Any]:
@@ -105,8 +105,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         try:
             payload = jwt.decode(
                 token,
-                self.secur_config.jwt_secret,
-                algorithms=[self.secur_config.jwt_algorithm],
+                self.secure_config.jwt_secret,
+                algorithms=[self.secure_config.jwt_algorithm],
             )
             return payload
         except jwt.ExpiredSignatureError:
@@ -151,10 +151,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     def _apply_cors_headers(self, response: Response) -> None:
         """Apply CORS headers to response"""
-        if not self.secur_config.cors_configuration:
+        if not self.secure_config.cors_configuration:
             return
 
-        cors = self.secur_config.cors_configuration
+        cors = self.secure_config.cors_configuration
         response.headers.update(
             {
                 "Access-Control-Allow-Origin": ", ".join(cors.allowed_origins),
@@ -167,8 +167,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     def _apply_security_headers(self, response: Response) -> None:
         """Apply security headers to response"""
-        if self.secur_config.security_headers:
-            response.headers.update(self.secur_config.security_headers)
+        if self.secure_config.security_headers:
+            response.headers.update(self.secure_config.security_headers)
 
     async def before_request(self, request: Request) -> Request | Response:
         """Process request before handling"""
@@ -177,7 +177,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return rate_limit_response
 
         # JWT authentication check
-        if self.secur_config.jwt_auth:
+        if self.secure_config.jwt_auth:
             auth_header = request.headers.get("Authorization")
             if not auth_header or not auth_header.startswith("Bearer "):
                 return Response(
@@ -191,7 +191,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 return Response(status_code=401, content=str(e))
 
         # CSRF protection check
-        if self.secur_config.csrf_protection and request.method in [
+        if self.secure_config.csrf_protection and request.method in [
             "POST",
             "PUT",
             "DELETE",

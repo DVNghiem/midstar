@@ -1,10 +1,15 @@
 import gzip
 import zlib
-from typing import List, Optional
+from typing import Awaitable, Callable, List, Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp
+from midstar.core.utils import get_streaming_response_body
+
+RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
+DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
 
 
 class CompressionMiddleware(BaseHTTPMiddleware):
@@ -14,11 +19,11 @@ class CompressionMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
+        app: ASGIApp,
+        dispatch: DispatchFunction | None = None,
         min_size: int = 500,
         compression_level: int = 6,
         include_types: Optional[List[str]] = None,
-        *args,
-        **kwargs,
     ) -> None:
         """
         Initialize compression middleware.
@@ -28,7 +33,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             compression_level: Compression level (1-9, higher = better compression but slower)
             include_types: List of content types to compress (defaults to common text types)
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(app, dispatch)
         self.min_size = min_size
         self.compression_level = compression_level
         self.include_types = include_types or [
@@ -42,12 +47,10 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             "application/x-yaml",
         ]
 
-    def before_request(self, request: Request) -> Request:
-        return request
-
     async def dispatch(self, request: Request, call_next) -> Response:
         # Call the next middleware or endpoint
-        response: Response = await super().dispatch(request, call_next)
+        response: Response = await call_next(request)
+        response_body = get_streaming_response_body(response)
 
         # Check if response should be compressed
         content_type = (
@@ -62,7 +65,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         if (
             content_encoding
             or content_type not in self.include_types
-            or len(response.body.encode()) < self.min_size
+            or len(response_body) < self.min_size
         ):
             return response
 
