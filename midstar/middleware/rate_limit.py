@@ -1,8 +1,12 @@
 import time
-
+from typing import Awaitable, Callable, Optional, List
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp
+RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
+DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
+
 
 from midstar.core.backend import StorageBackend
 
@@ -19,23 +23,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
+        app: ASGIApp,
         storage_backend: StorageBackend,
         requests_per_minute=60,
         window_size=60,
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(app,  *args, **kwargs)
         self.storage = storage_backend
         self.requests_per_minute = requests_per_minute
         self.window_size = window_size
 
     async def dispatch(self, request, call_next):
         request = self.before_request(request)
-        return await super().dispatch(request, call_next)
-
-    def get_request_identifier(self, request: Request):
-        return request.client.host
+        response = await call_next(request)
+        return response
+    
+    def get_request_identifier(self, request: Request) -> str:
+        forwarded = request.headers.get("X-Forwarded-For")
+        return forwarded.split(",")[0].strip() if forwarded else request.client.host
 
     def before_request(self, request: Request):
         """
