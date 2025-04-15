@@ -1,41 +1,44 @@
-from threading import Lock
+import asyncio
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
-class ConcurrentRequestMiddleware(BaseHTTPMiddleware):
+class ConcurrentRequestMiddleware:
     # The `ConcurrentRequestMiddleware` class limits the number of concurrent requests and returns a 429
     # status code with a Retry-After header if the limit is reached.
-    def __init__(self, max_concurrent_requests=100):
+    def __init__(self, app: ASGIApp, max_concurrent_requests=100):
         super().__init__()
+        self.app = app
         self.max_concurrent_requests = max_concurrent_requests
         self.current_requests = 0
-        self.lock = Lock()
+        self.lock = asyncio.Lock()
 
-    async def dispatch(self, request, call_next):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
         """
-        The `before_request` function limits the number of concurrent requests and returns a 429 status code
-        with a Retry-After header if the limit is reached.
-
-        :param request: The `before_request` method in the code snippet is a method that is called before
-        processing each incoming request. It checks if the number of current requests is within the allowed
-        limit (`max_concurrent_requests`). If the limit is exceeded, it returns a 429 status code with a
-        "Too Many Requests
-        :return: the `request` object after checking if the number of current requests is within the allowed
-        limit. If the limit is exceeded, it returns a 429 status code response with a "Too Many Requests"
-        description and a "Retry-After" header set to 5.
+        The `__call__` method is the entry point for the middleware. It checks if the number of current
+        requests is within the allowed limit (`max_concurrent_requests`). If the limit is exceeded, it
+        returns a 429 status code with a "Too Many Requests" description.
         """
-
-        with self.lock:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        async with self.lock:
             if self.current_requests >= self.max_concurrent_requests:
-                return Response(
-                    status_code=429,
-                    description="Too Many Requests",
-                    headers={"Retry-After": "5"},
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 429,
+                        "headers": [[b"content-type", b"text/plain"]],
+                    }
                 )
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": b"Too Many Requests",
+                    }
+                )
+                return
             self.current_requests += 1
-        response = await super().dispatch(request, call_next)
-        with self.lock:
+        await self.app(scope, receive, send)
+        async with self.lock:
             self.current_requests -= 1
-        return response

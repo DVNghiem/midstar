@@ -5,6 +5,7 @@ from midstar.middleware import (
     RateLimitMiddleware,
     EdgeCacheMiddleware,
     SecurityMiddleware,
+    ConcurrentRequestMiddleware
 )
 from midstar.core.backend import InMemoryBackend
 from starlette.middleware import Middleware
@@ -14,17 +15,15 @@ backend = InMemoryBackend()
 app = Starlette(
     middleware=[
         Middleware(
+            ConcurrentRequestMiddleware,
+            max_concurrent_requests=1,
+        ),
+        Middleware(
             RateLimitMiddleware,
             storage_backend=backend,
             requests_per_minute=1,
             window_size=1
         ),
-        # Middleware(
-        #     RateLimitMiddleware,
-        #     storage_backend=None,  # Replace with your storage backend
-        #     requests_per_minute=60,
-        #     window_size=60,
-        # ),
         # Middleware(
         #     EdgeCacheMiddleware,
         #     max_age=3600,
@@ -61,6 +60,8 @@ app = Starlette(
     ]
 )
 
+import time
 @app.route("/")
 def hello(request):
+    time.sleep(5)
     return PlainTextResponse("hello")
