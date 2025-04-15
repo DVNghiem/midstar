@@ -42,19 +42,38 @@ class CacheConfig:
 
 
 class EdgeCacheMiddleware:
-    """
-    Middleware implementing edge caching strategies with support for:
-    - Cache-Control directives
-    - ETag generation
-    - Conditional requests (If-None-Match, If-Modified-Since)
-    - Vary header management
-    - CDN-specific headers
-    """
 
-    def __init__(self, app: ASGIApp, cache_config: CacheConfig | None = None):
+    """
+    EdgeCacheMiddleware handles HTTP caching at the edge using ETags.
+    This ASGI middleware provides HTTP caching capabilities by implementing 
+    ETag-based validation and conditional responses. It manages a local cache
+    of ETags for responses and handles conditional requests based on the 
+    If-None-Match header.
+    The middleware supports configurable cache control directives, cache key
+    generation based on various request attributes, and selective caching
+    based on request method and path patterns.
+    Features:
+    - In-memory ETag caching with configurable size limits and TTL
+    - Conditional responses (304 Not Modified) for unchanged content
+    - Fine-grained cache control header management
+    - Support for private/public cache directives based on URL paths
+    - Cache key generation based on request attributes
+    - Cache exclusion for specific paths and HTTP methods
+        ```python
+        app = FastAPI()
+        cache_config = CacheConfig(
+            max_age=300,  # 5 minutes
+            s_maxage=600,  # 10 minutes for CDNs
+            private_paths=["/user/", "/account/"],
+            exclude_paths=["/admin/"],
+            vary_by=["Accept", "Accept-Encoding"]
+        app.add_middleware(EdgeCacheMiddleware, config=cache_config)
+        ```
+    """
+    def __init__(self, app: ASGIApp, config: CacheConfig | None = None):
         super().__init__()
         self.app = app
-        self.cache_config = cache_config or CacheConfig()
+        self.config = config or CacheConfig()
         self._etag_cache: Dict[str, tuple[str, str, float]] = {}
         self.request_context = {}
 
@@ -74,7 +93,7 @@ class EdgeCacheMiddleware:
         last_modified = etag_data[1] if etag_data else None
         timestamp = etag_data[2] if etag_data else None
 
-        if timestamp and (time.time() - timestamp) > self.cache_config.max_age:
+        if timestamp and (time.time() - timestamp) > self.config.max_age:
             del self._etag_cache[cache_key]
             etag = None
             last_modified = None
@@ -87,7 +106,7 @@ class EdgeCacheMiddleware:
                 headers = [
                     [b"etag", etag.encode()],
                     [b"cache-control", cache_control.encode()],
-                    [b"vary", ", ".join(self.cache_config.vary_by).encode()],
+                    [b"vary", ", ".join(self.config.vary_by).encode()],
                 ]
                 if last_modified:
                     headers.append([b"last-modified", last_modified.encode()])
@@ -135,7 +154,7 @@ class EdgeCacheMiddleware:
                     )
                     self._etag_cache[cache_key] = (etag, last_modified, time.time())
 
-                    if len(self._etag_cache) > self.cache_config.max_cache_size:
+                    if len(self._etag_cache) > self.config.max_cache_size:
                         oldest_key = next(
                             iter(self._etag_cache)
                         )  # delete the oldest item
@@ -146,7 +165,7 @@ class EdgeCacheMiddleware:
                         [
                             [b"cache-control", cache_control.encode()],
                             [b"etag", etag.encode()],
-                            [b"vary", ", ".join(self.cache_config.vary_by).encode()],
+                            [b"vary", ", ".join(self.config.vary_by).encode()],
                             [
                                 b"last-modified",
                                 datetime.now(tz=timezone.utc)
@@ -156,7 +175,7 @@ class EdgeCacheMiddleware:
                             [b"cdn-cache-control", cache_control.encode()],
                             [
                                 b"surrogate-control",
-                                f"max-age={self.cache_config.s_maxage or self.cache_config.max_age}".encode(),
+                                f"max-age={self.config.s_maxage or self.config.max_age}".encode(),
                             ],
                         ]
                     )
@@ -179,7 +198,25 @@ class EdgeCacheMiddleware:
         await self.app(scope, receive, wrapped_send)
 
     async def _send_no_cache_response(self, scope: Scope, receive: Receive, send: Send):
-        """Send response Cache-Control: no-store"""
+        """
+        Send the response with cache-control: no-store header.
+
+        This method wraps the original send function to inject a cache-control header
+        that prevents responses from being stored in any cache.
+
+        Parameters:
+        -----------
+        scope : Scope
+            The ASGI connection scope.
+        receive : Receive
+            The ASGI receive channel, a callable that will yield a new event when one is available.
+        send : Send
+            The ASGI send channel, a callable that accepts events to send back to the client.
+
+        Returns:
+        --------
+        None
+        """
 
         async def no_cache_send(event):
             if event["type"] == "http.response.start":
@@ -192,17 +229,35 @@ class EdgeCacheMiddleware:
 
     def _should_cache(self, request: Request, path: str) -> bool:
         """Check if the request should be cached based on method and path"""
-        if request.method.upper() in self.cache_config.exclude_methods:
+        if request.method.upper() in self.config.exclude_methods:
             return False
-        if any(excluded in path for excluded in self.cache_config.exclude_paths):
+        if any(excluded in path for excluded in self.config.exclude_paths):
             return False
         return True
 
     def _generate_cache_key(self, request: Request) -> str:
+        """
+        Generate a unique cache key based on the request attributes.
+        
+        The key is generated from a combination of:
+        - Request method (e.g., GET, POST)
+        - Request URL path
+        - Query parameters (if include_query_string is enabled in config)
+        - Selected headers (as specified in config.cache_by_headers)
+        
+        The combined components are joined with colons, hashed using SHA-256,
+        and returned as a hexadecimal string.
+        
+        Args:
+            request (Request): The FastAPI request object for which to generate a cache key
+            
+        Returns:
+            str: A SHA-256 hash hexadecimal string that serves as the cache key
+        """
         components = [request.method, request.url.path]
-        if self.cache_config.include_query_string:
+        if self.config.include_query_string:
             components.append(str(request.query_params))
-        for header in self.cache_config.cache_by_headers:
+        for header in self.config.cache_by_headers:
             value = request.headers.get(header.lower())
             if value:
                 components.append(f"{header}:{value}")
@@ -212,20 +267,37 @@ class EdgeCacheMiddleware:
         return hashlib.sha256(body).hexdigest()
 
     def _build_cache_control(self, path: str) -> str:
-        """Create header Cache-Control"""
+        """
+        Builds a Cache-Control header value based on the configuration settings and the request path.
+        
+        This method constructs a Cache-Control header string by combining various cache directives
+        according to the middleware configuration. It determines whether the resource should be
+        considered private or public based on the path, and adds caching duration parameters
+        like max-age, s-maxage, stale-while-revalidate, and stale-if-error when configured.
+        
+        Args:
+            path: The request path to determine appropriate cache directives
+            
+        Returns:
+            A string containing comma-separated Cache-Control directives
+            
+        Example:
+            When path is "/api/private/data" might return:
+            "private, max-age=300, s-maxage=600, stale-while-revalidate=60"
+        """
         directives = []
-        if any(private in path for private in self.cache_config.private_paths):
+        if any(private in path for private in self.config.private_paths):
             directives.append("private")
         else:
             directives.append("public")
-        directives.append(f"max-age={self.cache_config.max_age}")
-        if self.cache_config.s_maxage is not None:
-            directives.append(f"s-maxage={self.cache_config.s_maxage}")
-        if self.cache_config.stale_while_revalidate is not None:
+        directives.append(f"max-age={self.config.max_age}")
+        if self.config.s_maxage is not None:
+            directives.append(f"s-maxage={self.config.s_maxage}")
+        if self.config.stale_while_revalidate is not None:
             directives.append(
-                f"stale-while-revalidate={self.cache_config.stale_while_revalidate}"
+                f"stale-while-revalidate={self.config.stale_while_revalidate}"
             )
-        if self.cache_config.stale_if_error is not None:
-            directives.append(f"stale-if-error={self.cache_config.stale_if_error}")
-        directives.extend(self.cache_config.cache_control)
+        if self.config.stale_if_error is not None:
+            directives.append(f"stale-if-error={self.config.stale_if_error}")
+        directives.extend(self.config.cache_control)
         return ", ".join(directives)

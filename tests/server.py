@@ -12,6 +12,8 @@ from midstar.middleware import (
 from midstar.core.backend import InMemoryBackend
 from starlette.middleware import Middleware
 from starlette.responses import PlainTextResponse
+import time
+
 backend = InMemoryBackend()
 
 app = Starlette(
@@ -28,7 +30,7 @@ app = Starlette(
         ),
         Middleware(
             EdgeCacheMiddleware,
-            cache_config = CacheConfig(max_age=60)    
+            config = CacheConfig(max_age=60)    
         ),
         Middleware(
             SecurityHeadersMiddleware,
@@ -43,8 +45,7 @@ app = Starlette(
     ]
 )
 
-import time
 @app.route("/")
 def hello(request):
-    # time.sleep(5)
+    time.sleep(5)
     return PlainTextResponse("hello")

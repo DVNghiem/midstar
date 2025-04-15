@@ -17,6 +17,32 @@ class CSRFConfig:
 
 
 class CSRFProtectionMiddleware:
+    """CSRF Protection Middleware for ASGI applications.
+
+    This middleware provides Cross-Site Request Forgery (CSRF) protection for ASGI web applications.
+    It validates CSRF tokens for unsafe HTTP methods (POST, PUT, DELETE, PATCH) and rejects
+    requests with invalid or missing tokens.
+
+    The middleware works by generating secure tokens that combine session information with
+    a timestamp, which are signed using HMAC-SHA256 and then validated on subsequent requests.
+
+    Usage:
+        app = CSRFProtectionMiddleware(app, config=CSRFConfig(
+            secret_key=b"your-secret-key",
+            token_lifetime=3600  # 1 hour
+        ))
+
+    Workflow:
+    1. Generate a CSRF token using the `generate_csrf_token()` method
+    2. Include this token in forms or as a header in AJAX requests
+    3. The middleware will automatically validate the token on unsafe HTTP methods
+
+    The middleware rejects requests with a 401 Unauthorized status when CSRF validation fails.
+
+    Attributes:
+        app (ASGIApp): The ASGI application being wrapped
+        config (CSRFConfig): Configuration object containing settings like secret_key and token_lifetime
+    """
     def __init__(self, app: ASGIApp, config: CSRFConfig):
         self.app = app
         self.config = config

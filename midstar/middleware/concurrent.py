@@ -4,8 +4,35 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class ConcurrentRequestMiddleware:
-    # The `ConcurrentRequestMiddleware` class limits the number of concurrent requests and returns a 429
-    # status code with a Retry-After header if the limit is reached.
+    """A middleware for ASGI applications that limits the number of concurrent requests.
+
+    This middleware tracks the number of active requests and rejects new requests with a
+    429 "Too Many Requests" response when the concurrent request limit is exceeded.
+
+    Parameters
+    ----------
+    app : ASGIApp
+        The ASGI application that this middleware wraps.
+    max_concurrent_requests : int, default=100
+        The maximum number of concurrent requests allowed. Requests exceeding this limit
+        will receive a 429 response.
+
+    Attributes
+    ----------
+    app : ASGIApp
+        The wrapped ASGI application.
+    max_concurrent_requests : int
+        The maximum number of concurrent requests allowed.
+    current_requests : int
+        The current number of active requests being processed.
+    lock : asyncio.Lock
+        A lock used to synchronize access to the request counter.
+
+    Notes
+    -----
+    This middleware only applies to HTTP requests. Other ASGI protocol types
+    (like WebSocket) are passed through without counting against the limit."""
+
     def __init__(self, app: ASGIApp, max_concurrent_requests=100):
         super().__init__()
         self.app = app

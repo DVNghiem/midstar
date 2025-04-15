@@ -9,14 +9,34 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 class RateLimitMiddleware:
     """
-    The RateLimitMiddleware class implements rate limiting functionality to restrict the number of
-    Requests per minute for a given IP address.
+    Rate limiting middleware for restricting the number of requests from a single client.
 
-    The `RateLimitMiddleware` function checks the request rate limit and returns a 429 status code if the
-    limit is exceeded.
+    This middleware implements a fixed window rate limiting strategy, where requests are
+    tracked and limited within specific time windows. It can be used to protect API
+    endpoints from abuse, DOS attacks, or to enforce usage limits.
 
+    Examples:
+        ```
+        app = FastAPI()
+        app.add_middleware(
+            RateLimitMiddleware,
+            storage_backend=RedisStorageBackend(redis_client),
+            requests_per_minute=100,
+            window_size=60
+        )
+        ```
+
+    Attributes:
+        app (ASGIApp): The ASGI application instance.
+        storage (StorageBackend): Backend for storing rate limit counters.
+        requests_per_minute (int): Maximum number of requests allowed per time window.
+        window_size (int): Size of the rate limit window in seconds.
+
+    Notes:
+        - The middleware identifies clients primarily by their IP address
+        - It honors the X-Forwarded-For header for clients behind proxies
+        - When rate limit is exceeded, returns a 429 status code with a Retry-After header
     """
-
     def __init__(
         self,
         app: ASGIApp,

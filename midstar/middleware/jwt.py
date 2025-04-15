@@ -7,6 +7,33 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 class JWTMiddleware:
+    """
+    JWT Middleware for ASGI applications.
+
+    This middleware handles JWT authentication for ASGI applications. It validates
+    the JWT token in the Authorization header and adds the decoded payload to the
+    request scope under the 'user' key.
+
+    Attributes:
+        app (ASGIApp): The ASGI application.
+        jwt_secret (str): Secret key for JWT encoding/decoding.
+        jwt_algorithm (str): Algorithm used for JWT encoding/decoding, default is "HS256".
+        jwt_expires_in (int): Token expiration time in seconds, default is 3600 (1 hour).
+
+    Usage:
+        ```
+        app = FastAPI()
+        app.add_middleware(
+            JWTMiddleware,
+            jwt_secret="your-secret-key",
+            jwt_algorithm="HS256",
+            jwt_expires_in=3600
+        ```
+
+    Note:
+        The middleware expects the JWT token to be included in the Authorization
+        header using the Bearer scheme: "Authorization: Bearer <token>"
+    """
     def __init__(
         self,
         app: ASGIApp,
