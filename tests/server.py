@@ -16,7 +16,7 @@ app = Starlette(
         Middleware(
             RateLimitMiddleware,
             storage_backend=backend,
-            requests_per_minute=2,
+            requests_per_minute=1,
             window_size=1
         ),
         # Middleware(
