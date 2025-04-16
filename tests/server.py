@@ -8,6 +8,7 @@ from midstar.middleware import (
     CacheConfig,
     SecurityHeadersConfig,
     SecurityHeadersMiddleware,
+    HTTP2PushMiddleware
 )
 from midstar.core.backend import InMemoryBackend
 from starlette.middleware import Middleware
@@ -42,6 +43,9 @@ app = Starlette(
                 }
             ),
         ),
+        Middleware(
+            HTTP2PushMiddleware
+        )
     ]
 )
 

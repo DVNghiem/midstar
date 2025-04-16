@@ -4,6 +4,7 @@ from .csrf import CSRFConfig, CSRFProtectionMiddleware
 from .jwt import JWTMiddleware
 from .rate_limit import RateLimitMiddleware
 from .security_header import SecurityHeadersConfig, SecurityHeadersMiddleware
+from .http2_push import HTTP2PushMiddleware
 
 __all__ = [
     "EdgeCacheMiddleware",
@@ -15,4 +16,5 @@ __all__ = [
     "CSRFConfig",
     "SecurityHeadersConfig",
     "SecurityHeadersMiddleware",
+    "HTTP2PushMiddleware",
 ]

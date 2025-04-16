@@ -99,6 +99,21 @@ app.add_middleware(
     max_concurrent_requests=100
 )
 ```
+#### HTTP2PushMiddleware
+Enables HTTP/2 Server Push to proactively send critical resources to the client.
+
+```python
+from midstar.middleware import HTTP2PushMiddleware
+
+app.add_middleware(
+    HTTP2PushMiddleware,
+    push_resources={
+        "/": ["/static/css/main.css", "/static/js/app.js"],
+        "/blog": ["/static/css/blog.css", "/static/images/header.png"]
+    },
+)
+```
+
 ### Backend Storage Options
 Midstar supports multiple backend storage options for rate limiting and other features:
 
@@ -116,57 +131,7 @@ from midstar.core.backend import InMemoryBackend
 
 backend = InMemoryBackend()
 ```
-### Example Application
-Here's a complete example setting up multiple middleware components:
 
-```python
-from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse
-from midstar.middleware import (
-    RateLimitMiddleware,
-    EdgeCacheMiddleware,
-    ConcurrentRequestMiddleware,
-    SecurityHeadersMiddleware,
-    CacheConfig,
-    SecurityHeadersConfig
-)
-from midstar.core.backend import InMemoryBackend
-
-backend = InMemoryBackend()
-
-app = Starlette(
-    middleware=[
-        Middleware(
-            ConcurrentRequestMiddleware,
-            max_concurrent_requests=100,
-        ),
-        Middleware(
-            RateLimitMiddleware,
-            storage_backend=backend,
-            requests_per_minute=60,
-            window_size=60
-        ),
-        Middleware(
-            EdgeCacheMiddleware,
-            config=CacheConfig(max_age=60)    
-        ),
-        Middleware(
-            SecurityHeadersMiddleware,
-            config=SecurityHeadersConfig(
-                headers={
-                    "X-Content-Type-Options": "nosniff",
-                    "X-Frame-Options": "DENY",
-                    "Content-Security-Policy": "default-src 'self'",
-                }
-            ),
-        ),
-    ]
-)
-
-@app.route("/")
-def hello(request):
-    return PlainTextResponse("Hello, world!")
-```
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
