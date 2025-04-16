@@ -6,6 +6,7 @@ from .rate_limit import RateLimitMiddleware
 from .security_header import SecurityHeadersConfig, SecurityHeadersMiddleware
 from .http2_push import HTTP2PushMiddleware
 from .compress import CompressionMiddleware
+from .error_handle import ErrorHandlingMiddleware
 
 __all__ = [
     "EdgeCacheMiddleware",
@@ -19,5 +20,6 @@ __all__ = [
     "SecurityHeadersMiddleware",
     "HTTP2PushMiddleware",
     "CompressMiddleware",
-    "CompressionMiddleware"
+    "CompressionMiddleware",
+    "ErrorHandlingMiddleware"
 ]

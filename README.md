@@ -126,7 +126,53 @@ app.add_middleware(
     compression_level=6  # Compression level (1-9, where 9 is highest compression)
 )
 ```
+### Error Handling Middleware
 
+#### ErrorHandlerMiddleware
+Provides centralized error handling and customized error responses for your application.
+
+```python
+from midstar.middleware import ErrorHandlerMiddleware, ErrorConfig
+from starlette.responses import JSONResponse
+
+def custom_exception_handler(exc, scope):
+    return JSONResponse(
+        status_code=500,
+        content={"message": "An unexpected error occurred", "error_code": "INTERNAL_ERROR"}
+    )
+
+app.add_middleware(
+    ErrorHandlerMiddleware,
+    handlers={
+        ValueError: lambda r, e: JSONResponse(status_code=400, content={"message": str(e)}),
+        KeyError: lambda r, e: JSONResponse(status_code=404, content={"message": "Resource not found"}),
+        Exception: custom_exception_handler
+    },
+    log_exceptions=True
+)
+```
+
+#### ValidationMiddleware
+Automatically validates request data against predefined schemas.
+
+```python
+from midstar.middleware import ValidationMiddleware
+from pydantic import BaseModel
+
+class UserSchema(BaseModel):
+    username: str
+    email: str
+    age: int
+
+app.add_middleware(
+    ValidationMiddleware,
+    validators={
+        "/users": {"POST": UserSchema},
+        "/users/{user_id}": {"PUT": UserSchema}
+    },
+    response_class=JSONResponse
+)
+```
 
 ### Backend Storage Options
 Midstar supports multiple backend storage options for rate limiting and other features:

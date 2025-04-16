@@ -10,13 +10,37 @@ from midstar.middleware import (
     SecurityHeadersMiddleware,
     HTTP2PushMiddleware,
     CompressionMiddleware,
+    ErrorHandlingMiddleware
 )
 from midstar.core.backend import InMemoryBackend
 from starlette.middleware import Middleware
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, JSONResponse
 import time
 
 backend = InMemoryBackend()
+
+class NotFoundError(Exception):
+    status_code = 404
+    def __init__(self, message="Resource not found"):
+        self.message = message
+        super().__init__(self.message)
+
+class ValidationError(Exception):
+    status_code = 422
+    def __init__(self, errors=None):
+        self.errors = errors or {}
+        message = f"Validation failed: {', '.join(self.errors.keys())}"
+        super().__init__(message)
+
+def handle_validation_error(exc, scope):
+    return {
+        "error": {
+            "title": "Validation Error",
+            "message": str(exc),
+            "fields": exc.errors
+        }
+    }
+
 
 app = Starlette(
     middleware=[
@@ -51,11 +75,17 @@ app = Starlette(
             CompressionMiddleware,
             minimum_size=1000,
             compressible_content_types=["text/html", "application/json"]
+        ),
+        Middleware(
+            ErrorHandlingMiddleware,
+            handlers={
+                ValueError: handle_validation_error,
+            }
         )
     ]
 )
 
 @app.route("/")
 def hello(request):
-    time.sleep(5)
+    raise ValidationError("This is a custom error message")
     return PlainTextResponse("hello")
