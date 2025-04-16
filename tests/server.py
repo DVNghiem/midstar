@@ -8,7 +8,8 @@ from midstar.middleware import (
     CacheConfig,
     SecurityHeadersConfig,
     SecurityHeadersMiddleware,
-    HTTP2PushMiddleware
+    HTTP2PushMiddleware,
+    CompressionMiddleware,
 )
 from midstar.core.backend import InMemoryBackend
 from starlette.middleware import Middleware
@@ -45,6 +46,11 @@ app = Starlette(
         ),
         Middleware(
             HTTP2PushMiddleware
+        ),
+        Middleware(
+            CompressionMiddleware,
+            minimum_size=1000,
+            compressible_content_types=["text/html", "application/json"]
         )
     ]
 )

@@ -5,6 +5,7 @@ from .jwt import JWTMiddleware
 from .rate_limit import RateLimitMiddleware
 from .security_header import SecurityHeadersConfig, SecurityHeadersMiddleware
 from .http2_push import HTTP2PushMiddleware
+from .compress import CompressionMiddleware
 
 __all__ = [
     "EdgeCacheMiddleware",
@@ -17,4 +18,6 @@ __all__ = [
     "SecurityHeadersConfig",
     "SecurityHeadersMiddleware",
     "HTTP2PushMiddleware",
+    "CompressMiddleware",
+    "CompressionMiddleware"
 ]

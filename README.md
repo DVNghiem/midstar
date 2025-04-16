@@ -113,6 +113,20 @@ app.add_middleware(
     },
 )
 ```
+#### CompressionMiddleware
+Automatically compresses HTTP responses to reduce bandwidth usage and improve load times.
+
+```python
+from midstar.middleware import CompressionMiddleware
+
+app.add_middleware(
+    CompressionMiddleware,
+    minimum_size=1000,  # Only compress responses larger than 1KB
+    compressible_content_types=["text/html", "text/css", "application/javascript", "application/json"],
+    compression_level=6  # Compression level (1-9, where 9 is highest compression)
+)
+```
+
 
 ### Backend Storage Options
 Midstar supports multiple backend storage options for rate limiting and other features:
