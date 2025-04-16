@@ -21,8 +21,6 @@ classifiers = [
     "Typing :: Typed",
     "Environment :: Web Environment",
     "Framework :: AsyncIO",
-    "Framework :: FastAPI",
-    "Framework :: Starlette",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
@@ -31,8 +29,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content"
 ]
 dependencies = [
     "starlette (>=0.46.1,<0.47.0)",
