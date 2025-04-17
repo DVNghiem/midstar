@@ -1,6 +1,6 @@
 [project]
 name = "midstar"
-version = "0.1.0"
+version = "0.2.0"
 description = "Midstar is a collection of middleware components for ASGI applications (like FastAPI and Starlette)"
 authors = [
     {name = "Dang Van Nghiem",email = "vannghiem848@gmail.com"}
