@@ -1,12 +1,12 @@
 from .cache import CacheConfig, EdgeCacheMiddleware
+from .compress import CompressionMiddleware
 from .concurrent import ConcurrentRequestMiddleware
 from .csrf import CSRFConfig, CSRFProtectionMiddleware
+from .error_handle import ErrorHandlingMiddleware
+from .http2_push import HTTP2PushMiddleware
 from .jwt import JWTMiddleware
 from .rate_limit import RateLimitMiddleware
 from .security_header import SecurityHeadersConfig, SecurityHeadersMiddleware
-from .http2_push import HTTP2PushMiddleware
-from .compress import CompressionMiddleware
-from .error_handle import ErrorHandlingMiddleware
 
 __all__ = [
     "EdgeCacheMiddleware",
@@ -19,7 +19,6 @@ __all__ = [
     "SecurityHeadersConfig",
     "SecurityHeadersMiddleware",
     "HTTP2PushMiddleware",
-    "CompressMiddleware",
     "CompressionMiddleware",
-    "ErrorHandlingMiddleware"
+    "ErrorHandlingMiddleware",
 ]
