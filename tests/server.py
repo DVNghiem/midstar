@@ -80,12 +80,13 @@ app = Starlette(
             ErrorHandlingMiddleware,
             handlers={
                 ValueError: handle_validation_error,
-            }
+            },
+            # log_exceptions=True,
         )
     ]
 )
 
 @app.route("/")
 def hello(request):
-    raise ValidationError("This is a custom error message")
+    raise ValidationError({"field1": "Field1 is required", "field2": "Field2 must be a number"})
     return PlainTextResponse("hello")

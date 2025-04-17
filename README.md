@@ -135,18 +135,25 @@ Provides centralized error handling and customized error responses for your appl
 from midstar.middleware import ErrorHandlerMiddleware, ErrorConfig
 from starlette.responses import JSONResponse
 
-def custom_exception_handler(exc, scope):
-    return JSONResponse(
-        status_code=500,
-        content={"message": "An unexpected error occurred", "error_code": "INTERNAL_ERROR"}
-    )
+class ValidationError(Exception):
+    status_code = 422
+    def __init__(self, errors=None):
+        self.errors = errors or {}
+        message = f"Validation failed: {', '.join(self.errors.keys())}"
+        super().__init__(message)
 
+def handle_validation_error(exc, scope):
+    return {
+        "error": {
+            "title": "Validation Error",
+            "message": str(exc),
+            "fields": exc.errors
+        }
+    }
 app.add_middleware(
     ErrorHandlerMiddleware,
     handlers={
-        ValueError: lambda r, e: JSONResponse(status_code=400, content={"message": str(e)}),
-        KeyError: lambda r, e: JSONResponse(status_code=404, content={"message": "Resource not found"}),
-        Exception: custom_exception_handler
+        ValidationError: handle_validation_error,
     },
     log_exceptions=True
 )
