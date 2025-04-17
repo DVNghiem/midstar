@@ -89,4 +89,3 @@ app = Starlette(
 @app.route("/")
 def hello(request):
     raise ValidationError({"field1": "Field1 is required", "field2": "Field2 must be a number"})
-    return PlainTextResponse("hello")
