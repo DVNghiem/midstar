@@ -1,5 +1,5 @@
 # Midstar
-Midstar is a collection of middleware components for ASGI applications (like FastAPI and Starlette) that provides essential security features, performance optimizations, and utility functions to enhance your web applications.
+Midstar is a collection of middleware components for ASGI applications (like [FastAPI](https://github.com/fastapi/fastapi) and [Starlette](https://github.com/encode/starlette)) that provides essential security features, performance optimizations, and utility functions to enhance your web applications.
 
 Installation
 
