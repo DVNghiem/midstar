@@ -159,28 +159,6 @@ app.add_middleware(
 )
 ```
 
-#### ValidationMiddleware
-Automatically validates request data against predefined schemas.
-
-```python
-from midstar.middleware import ValidationMiddleware
-from pydantic import BaseModel
-
-class UserSchema(BaseModel):
-    username: str
-    email: str
-    age: int
-
-app.add_middleware(
-    ValidationMiddleware,
-    validators={
-        "/users": {"POST": UserSchema},
-        "/users/{user_id}": {"PUT": UserSchema}
-    },
-    response_class=JSONResponse
-)
-```
-
 ### Backend Storage Options
 Midstar supports multiple backend storage options for rate limiting and other features:
 
